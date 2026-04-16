@@ -1,0 +1,42 @@
+{
+  "rcon_address": {
+    "type": "string",
+    "description": "RCON 服务器地址",
+    "default": "127.0.0.1",
+    "hint": "例如: 127.0.0.1"
+  },
+  "rcon_port": {
+    "type": "int",
+    "description": "RCON 服务器端口",
+    "default": 18890,
+    "hint": "例如: 18890"
+  },
+  "rcon_password": {
+    "type": "string",
+    "description": "RCON 连接密码",
+    "default": ""
+  },
+  "player_monitor": {
+    "description": "玩家监控配置",
+    "type": "object",
+    "items": {
+      "enabled": {
+        "description": "是否启用玩家监控",
+        "type": "bool",
+        "default": false
+      },
+      "check_interval": {
+        "description": "检查间隔（秒）",
+        "type": "int",
+        "default": 60,
+        "hint": "建议设置为 30-300 秒"
+      },
+      "notify_group_id": {
+        "description": "通知目标群聊 ID",
+        "type": "string",
+        "default": "720937751",
+        "hint": "接收玩家变动通知的群聊号"
+      }
+    }
+  }
+}
