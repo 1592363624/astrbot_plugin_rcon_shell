@@ -36,6 +36,13 @@
         "type": "string",
         "default": "720937751",
         "hint": "接收玩家变动通知的群聊号"
+      },
+      "notify_platform": {
+        "description": "通知发送目标平台",
+        "type": "string",
+        "default": "aiocqhttp",
+        "options": ["aiocqhttp"],
+        "hint": "选择发送通知的目标平台适配器"
       }
     }
   }

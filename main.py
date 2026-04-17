@@ -8,12 +8,12 @@ from typing import Optional
 
 from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import filter, AstrMessageEvent, MessageChain
-from astrbot.api.star import Context, Star, register
+from astrbot.api.star import Context, Star, register, StarTools
 from .services.rcon_service import RconService, get_rcon_pool
 from .services.player_monitor_service import PlayerMonitorService, PlayerInfo
 
 
-@register("Rcon命令插件", "Shell", "定时监控Rcon命令执行并发送通知", "1.0.1",
+@register("Rcon命令插件", "Shell", "定时监控Rcon命令执行并发送通知", "1.1.0",
           "https://github.com/1592363624/astrbot_plugin_rcon_shell")
 class RconMonitorPlugin(Star):
     """RCON 命令插件，提供 RCON 连接和命令执行功能"""
@@ -35,9 +35,7 @@ class RconMonitorPlugin(Star):
         player_monitor_config = self.config.get("player_monitor", {})
         if player_monitor_config.get("enabled", False):
             interval = player_monitor_config.get("check_interval", 60)
-            group_id = player_monitor_config.get("notify_group_id", "720937751")
             self._player_monitor.set_check_interval(interval)
-            self._player_monitor.set_notify_group_id(group_id)
             asyncio.create_task(self._player_monitor.start_monitor())
 
     async def _send_notification(self, message: str):
@@ -50,21 +48,22 @@ class RconMonitorPlugin(Star):
         if not self._player_monitor:
             return
 
-        group_id = self._player_monitor._notify_group_id
+        player_monitor_config = self.config.get("player_monitor", {})
+        group_id = player_monitor_config.get("notify_group_id", "")
+        platform = player_monitor_config.get("notify_platform", "aiocqhttp")
+
         if not group_id:
+            logger.warning("玩家监控通知群号未配置")
             return
 
         try:
-            platform = self.context.get_platform()
-            if platform == "telegram":
-                umo = f"telegram:group:{group_id}"
-            elif platform == "qq":
-                umo = f"qq:group:{group_id}"
-            else:
-                umo = group_id
-
             chain = MessageChain().message(message)
-            await self.context.send_message(umo, chain)
+            await StarTools.send_message_by_id(
+                type="GroupMessage",
+                id=group_id,
+                message_chain=chain,
+                platform=platform
+            )
             logger.info(f"玩家监控通知已发送到群 {group_id}")
         except Exception as e:
             logger.error(f"发送玩家监控通知失败: {e}")
@@ -192,7 +191,7 @@ class RconMonitorPlugin(Star):
         player_monitor_config = self.config.get("player_monitor", {})
         enabled = player_monitor_config.get("enabled", False)
         interval = player_monitor_config.get("check_interval", 60)
-        group_id = player_monitor_config.get("notify_group_id", "720937751")
+        group_id = player_monitor_config.get("notify_group_id", "未设置")
 
         last_online, last_total = self._player_monitor.get_last_state()
 
