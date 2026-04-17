@@ -40,6 +40,8 @@ class PlayerChange:
     change_type: str
     previous_online: int
     current_online: int
+    joined_players: list[str] = field(default_factory=list)
+    left_players: list[str] = field(default_factory=list)
 
 
 class PlayerMonitorService:
@@ -294,9 +296,16 @@ class PlayerMonitorService:
         if self._last_online_count is None:
             self._last_online_count = current.online_count
             self._last_total_count = current.total_count
+            self._last_player_names: set[str] = set(current.online_names)
             return None
 
         if self._last_online_count != current.online_count:
+            current_names = set(current.online_names)
+            previous_names = getattr(self, '_last_player_names', set())
+
+            joined = list(current_names - previous_names)
+            left = list(previous_names - current_names)
+
             change_type = "increase" if current.online_count > self._last_online_count else "decrease"
             change = PlayerChange(
                 online_count=current.online_count,
@@ -304,10 +313,13 @@ class PlayerMonitorService:
                 player_names=current.online_names,
                 change_type=change_type,
                 previous_online=self._last_online_count,
-                current_online=current.online_count
+                current_online=current.online_count,
+                joined_players=joined,
+                left_players=left
             )
             self._last_online_count = current.online_count
             self._last_total_count = current.total_count
+            self._last_player_names = current_names
             return change
 
         return None
@@ -345,14 +357,19 @@ class PlayerMonitorService:
 
         msg = f"""🎮 玩家状态变动 {emoji}
 ━━━━━━━━━━━━━━━
-📊 在线玩家: {change.current_online}人
+📊 在线玩家: {change.previous_online} → {change.current_online}人
 ━━━━━━━━━━━━━━━"""
 
+        if change.joined_players:
+            joined_names = ", ".join(change.joined_players)
+            msg += f"\n🟢 进入: {joined_names}"
+
+        if change.left_players:
+            left_names = ", ".join(change.left_players)
+            msg += f"\n🔴 离开: {left_names}"
+
         if change.player_names:
-            names_preview = ", ".join(change.player_names[:10])
-            if len(change.player_names) > 10:
-                names_preview += f" ... (+{len(change.player_names) - 10}人)"
-            msg += f"\n👥 {names_preview}"
+            msg += f"\n━━━━━━━━━━━━━━━\n👥 当前在线: {', '.join(change.player_names)}"
 
         return msg
 
