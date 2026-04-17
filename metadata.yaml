@@ -1,6 +1,6 @@
 name: Rcon连接插件
 display_name: Rcon连接插件
 author: Shell
-version: 1.0.0
+version: 1.0.1
 description: 定时监控Rcon连接执行并发送通知
 repo: https://github.com/1592363624/astrbot_plugin_rcon_shell

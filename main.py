@@ -13,7 +13,7 @@ from .services.rcon_service import RconService, get_rcon_pool
 from .services.player_monitor_service import PlayerMonitorService, PlayerInfo
 
 
-@register("Rcon命令插件", "Shell", "定时监控Rcon命令执行并发送通知", "1.0.0",
+@register("Rcon命令插件", "Shell", "定时监控Rcon命令执行并发送通知", "1.0.1",
           "https://github.com/1592363624/astrbot_plugin_rcon_shell")
 class RconMonitorPlugin(Star):
     """RCON 命令插件，提供 RCON 连接和命令执行功能"""
@@ -38,6 +38,7 @@ class RconMonitorPlugin(Star):
             group_id = player_monitor_config.get("notify_group_id", "720937751")
             self._player_monitor.set_check_interval(interval)
             self._player_monitor.set_notify_group_id(group_id)
+            asyncio.create_task(self._player_monitor.start_monitor())
 
     async def _send_notification(self, message: str):
         """
