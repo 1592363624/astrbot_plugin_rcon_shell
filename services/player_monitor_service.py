@@ -28,6 +28,7 @@ class PlayerInfo:
     online_count: int = 0
     total_count: int = 0
     online_names: list[str] = field(default_factory=list)
+    online_accounts: set[str] = field(default_factory=set)
     all_players: list[PlayerDetailInfo] = field(default_factory=list)
 
 
@@ -127,17 +128,29 @@ class PlayerMonitorService:
             all_result = await rcon.send_command_async("List_AllPlayers")
             all_info = self._parse_all_players(all_result[1] if all_result[0] else "")
 
-            online_info.total_count = all_info.total_count
-            online_info.all_players = all_info.all_players
-
             online_names_set = set(online_info.online_names)
-            for player in online_info.all_players:
+            all_players_names = {p.player_name for p in all_info.all_players}
+
+            for player in all_info.all_players:
                 if player.player_name in online_names_set:
                     player.is_online = True
 
+            combined_players = list(all_info.all_players)
+
+            unmatched_names = online_names_set - all_players_names
+            for name in unmatched_names:
+                detail = PlayerDetailInfo()
+                detail.player_name = name
+                detail.is_online = True
+                combined_players.append(detail)
+                logger.info(f"在线玩家 {name} 不在总玩家列表中，已添加")
+
+            online_info.total_count = all_info.total_count
+            online_info.all_players = combined_players
+
             online_info.all_players.sort(key=lambda p: (not p.is_online, -p.level))
 
-            logger.info(f"查询结果: 在线={online_info.online_count}, 总计={online_info.total_count}")
+            logger.info(f"查询结果: 在线={online_info.online_count}, 总计={online_info.total_count}, 实际列出={len(online_info.all_players)}人")
             return online_info
 
         except Exception as e:
@@ -201,6 +214,9 @@ class PlayerMonitorService:
                 player_info.online_names.append(name_match.group(1))
                 player_info.online_count += 1
 
+            if len(parts) >= 1 and parts[0].strip().isdigit() and len(parts[0].strip()) > 10:
+                player_info.online_accounts.add(parts[0].strip())
+
         return player_info
 
     def _parse_all_players(self, raw_data: str) -> PlayerInfo:
@@ -217,7 +233,7 @@ class PlayerMonitorService:
         if not raw_data or raw_data.strip() == "":
             return player_info
 
-        logger.info(f"所有玩家原始数据长度: {len(raw_data)}")
+        logger.info(f"所有玩家原始数据:\n{repr(raw_data[:2000])}")
 
         lines = raw_data.strip().split('\n')
         header_found = False
@@ -247,6 +263,7 @@ class PlayerMonitorService:
                         header_indices["total_online"] = i
                     elif "birthday" in col_lower or "date" in col_lower:
                         header_indices["birthday"] = i
+                logger.info(f"表头列索引: {header_indices}")
                 continue
 
             if header_found and len(parts) >= 2:
@@ -279,8 +296,10 @@ class PlayerMonitorService:
 
                     player_info.all_players.append(detail)
                     player_info.total_count = len(player_info.all_players)
+                else:
+                    logger.debug(f"跳过行（不满足条件）: {line[:100]}")
 
-        logger.info(f"解析到总玩家数: {player_info.total_count}")
+        logger.info(f"解析到总玩家数: {player_info.total_count}, 实际行数: {len(player_info.all_players)}")
         return player_info
 
     def detect_change(self, current: PlayerInfo) -> Optional[PlayerChange]:
